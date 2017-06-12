@@ -21,3 +21,7 @@ The toggles can be turned on and off by going to `Window>Hierarchy Quick Toggle>
 **Object Icons** — If an [icon is assigned to an object](https://docs.unity3d.com/Manual/AssigningIcons.html), draw the icon in the hierarchy.
 
 **Right Gutter** — If other plugins draw on the right of the hierarchy window, use this setting to add spacing.
+
+## Buy me a coffee!
+
+If this useful to you, it would be great if you could [buy me a coffee](https://ko-fi.com/subjectnerd)!
