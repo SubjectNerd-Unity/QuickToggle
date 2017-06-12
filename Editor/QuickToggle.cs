@@ -5,7 +5,7 @@
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace UnityToolbag
+namespace SubjectNerd.QuickToggle
 {
     [InitializeOnLoad]
     public class QuickToggle
@@ -14,10 +14,14 @@ namespace UnityToolbag
 		private const string PrefKeyShowToggle = "UnityToolbag.QuickToggle.Visible";
 	    private const string PrefKeyShowDividers = "UnityToolbag.QuickToggle.Dividers";
 		private const string PrefKeyShowIcons = "UnityToolbag.QuickToggle.Icons";
+		private const string PrefKeyGutterLevel = "UnityToolbag.QuickToggle.Gutter";
 
 		private const string MENU_NAME = "Window/Hierarchy Quick Toggle/Show Toggles";
 		private const string MENU_DIVIDER = "Window/Hierarchy Quick Toggle/Dividers";
 		private const string MENU_ICONS = "Window/Hierarchy Quick Toggle/Object Icons";
+		private const string MENU_GUTTER_0 = "Window/Hierarchy Quick Toggle/Right Gutter/0";
+		private const string MENU_GUTTER_1 = "Window/Hierarchy Quick Toggle/Right Gutter/1";
+		private const string MENU_GUTTER_2 = "Window/Hierarchy Quick Toggle/Right Gutter/2";
 		#endregion
 
 		private static readonly Type HierarchyWindowType;
@@ -45,6 +49,10 @@ namespace UnityToolbag
 			Menu.SetChecked(MENU_NAME, EditorPrefs.GetBool(PrefKeyShowToggle));
 			Menu.SetChecked(MENU_DIVIDER, EditorPrefs.GetBool(PrefKeyShowDividers));
 			Menu.SetChecked(MENU_ICONS, EditorPrefs.GetBool(PrefKeyShowIcons));
+
+			int gutterLevel = EditorPrefs.GetInt(PrefKeyGutterLevel, 0);
+			gutterCount = gutterLevel;
+			UpdateGutterMenu(gutterCount);
 			return true;
 	    }
 
@@ -63,11 +71,51 @@ namespace UnityToolbag
 	    private static void ToggleSettings(string prefKey, string menuString, out bool valueBool)
 	    {
 		    valueBool = !EditorPrefs.GetBool(prefKey);
-			EditorPrefs.SetBool(prefKey, valueBool);
-			Menu.SetChecked(menuString, valueBool);
-			EditorApplication.RepaintHierarchyWindow();
+		    EditorPrefs.SetBool(prefKey, valueBool);
+		    Menu.SetChecked(menuString, valueBool);
+		    EditorApplication.RepaintHierarchyWindow();
 	    }
-		#endregion
+
+	    [MenuItem(MENU_GUTTER_0, false, 40)]
+	    private static void SetGutter0() { SetGutterLevel(0); }
+		[MenuItem(MENU_GUTTER_1, false, 41)]
+		private static void SetGutter1() { SetGutterLevel(1); }
+		[MenuItem(MENU_GUTTER_2, false, 42)]
+		private static void SetGutter2() { SetGutterLevel(2); }
+
+		private static void SetGutterLevel(int gutterLevel)
+	    {
+		    gutterLevel = Mathf.Clamp(gutterLevel, 0, 2);
+			EditorPrefs.SetInt(PrefKeyGutterLevel, gutterLevel);
+			gutterCount = gutterLevel;
+			UpdateGutterMenu(gutterCount);
+			EditorApplication.RepaintHierarchyWindow();
+		}
+
+	    private static void UpdateGutterMenu(int gutterLevel)
+	    {
+			string[] gutterKeys = new[] { MENU_GUTTER_0, MENU_GUTTER_1, MENU_GUTTER_2 };
+			bool[] gutterValues = null;
+			switch (gutterLevel)
+			{
+				case 1:
+					gutterValues = new[] { false, true, false };
+					break;
+				case 2:
+					gutterValues = new[] { false, false, true };
+					break;
+				default:
+					gutterValues = new[] { true, false, false };
+					break;
+			}
+			for (int i = 0; i < gutterKeys.Length; i++)
+			{
+				string key = gutterKeys[i];
+				bool isChecked = gutterValues[i];
+				Menu.SetChecked(key, isChecked);
+			}
+		}
+	    #endregion
 
 	    static QuickToggle()
 	    {
@@ -134,6 +182,8 @@ namespace UnityToolbag
 		private static bool	isFrameFresh;
 	    private static bool	isMousePressed;
 
+	    private static int gutterCount = 0;
+
 	    private static void ResetVars()
 	    {
 		    isFrameFresh = false;
@@ -167,14 +217,20 @@ namespace UnityToolbag
                 return;
 
             // Reserve the draw rects
+		    float gutterX = selectionRect.height*gutterCount;
+		    if (gutterX > 0)
+			    gutterX += selectionRect.height*0.1f;
+		    float xMax = selectionRect.xMax - gutterX;
+
             Rect visRect = new Rect(selectionRect)
             {
-                xMin = selectionRect.xMax - (selectionRect.height * 2.1f),
-                xMax = selectionRect.xMax - selectionRect.height
+                xMin = xMax - (selectionRect.height * 2.1f),
+                xMax = xMax - selectionRect.height
             };
             Rect lockRect = new Rect(selectionRect)
             {
-                xMin = selectionRect.xMax - selectionRect.height
+                xMin = xMax - (selectionRect.height * 1.05f),
+				xMax = xMax - (selectionRect.height * 0.05f)
             };
 
 			// Get states
