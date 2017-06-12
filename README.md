@@ -6,7 +6,7 @@ Hierarchy Quick Toggle adds icons in the Hierarchy view to quickly hide or lock 
 
 ## Installation
 
-Get the latest UnityPackage from the GitHub releases. The `QuickToggle` directory can be moved to another directory after importing.
+Get the latest UnityPackage from [GitHub releases](https://github.com/SubjectNerd-Unity/QuickToggle/releases). The `QuickToggle` directory can be moved to another directory after importing.
 
 ## Usage
 
