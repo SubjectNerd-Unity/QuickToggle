@@ -138,7 +138,7 @@ namespace SubjectNerd.QuickToggle
 
 	    static QuickToggle()
 	    {
-			// Setup initial state of editor prefs
+			// Setup initial state of editor prefs if there are no prefs keys yet
 			string[] resetPrefs = new string[] {PrefKeyShowToggle, PrefKeyShowDividers, PrefKeyShowIcons};
 			foreach (string prefKey in resetPrefs)
 			{
@@ -157,8 +157,9 @@ namespace SubjectNerd.QuickToggle
 			// Not calling BuildStyles() in constructor because script gets loaded
 			// on Unity initialization, styles might not be loaded yet
 
-			// Reset mouse state and 
+			// Reset mouse state
 			ResetVars();
+			// Setup quick toggle
             ShowQuickToggle(EditorPrefs.GetBool(PrefKeyShowToggle));
 	    }
 
@@ -167,6 +168,7 @@ namespace SubjectNerd.QuickToggle
 			EditorPrefs.SetBool(PrefKeyShowToggle, show);
 		    showDivider = EditorPrefs.GetBool(PrefKeyShowDividers, false);
 		    showIcons = EditorPrefs.GetBool(PrefKeyShowIcons, false);
+		    gutterCount = EditorPrefs.GetInt(PrefKeyGutterLevel);
 
 		    if (show)
             {
