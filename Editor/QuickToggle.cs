@@ -448,10 +448,26 @@ namespace SubjectNerd.QuickToggle
 			// Unselected just makes the normal states have no lock images
 			tempStyle = GUI.skin.FindStyle("OL Toggle");
 	        styleUnlocked = new GUIStyle(tempStyle);
+#if UNITY_2018_3_OR_NEWER
+            tempStyle = new GUIStyle()
+            {
+                normal = new GUIStyleState() { background = EditorGUIUtility.Load("Icons/animationvisibilitytoggleoff.png") as Texture2D },
+                onNormal = new GUIStyleState() { background = EditorGUIUtility.Load("Icons/animationvisibilitytoggleon.png") as Texture2D },
+                fixedHeight = 11,
+                fixedWidth = 13,
+                border = new RectOffset(2, 2, 2, 2),
+                overflow = new RectOffset(-1, 1, -2, 2),
+                padding = new RectOffset(3, 3, 3, 3),
+                richText = false,
+                stretchHeight = false,
+                stretchWidth = false,
+            };
+#else
+            tempStyle = GUI.skin.FindStyle("VisibilityToggle");
+#endif
+            
 
-	        tempStyle = GUI.skin.FindStyle("VisibilityToggle");
-
-			styleVisOff = new GUIStyle(tempStyle);
+            styleVisOff = new GUIStyle(tempStyle);
             styleVisOn = new GUIStyle(tempStyle)
             {
 				normal = new GUIStyleState() { background = tempStyle.onNormal.background }
