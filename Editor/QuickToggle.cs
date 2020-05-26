@@ -19,7 +19,8 @@ THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using System;
 ﻿using System.Collections.Generic;
-﻿using System.Reflection;
+using System.Linq;
+using System.Reflection;
 ﻿using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -34,10 +35,12 @@ namespace SubjectNerd.QuickToggle
 	    private const string PrefKeyShowDividers = "UnityToolbag.QuickToggle.Dividers";
 		private const string PrefKeyShowIcons = "UnityToolbag.QuickToggle.Icons";
 		private const string PrefKeyGutterLevel = "UnityToolbag.QuickToggle.Gutter";
+		private const string PrefKeyShowVisIcon = "UnityToolbag.QuickToggle.VisIcon";
 
 		private const string MENU_NAME = "Window/Hierarchy Quick Toggle/Show Toggles";
 		private const string MENU_DIVIDER = "Window/Hierarchy Quick Toggle/Dividers";
 		private const string MENU_ICONS = "Window/Hierarchy Quick Toggle/Object Icons";
+		private const string MENU_VIS_ICONS = "Window/Hierarchy Quick Toggle/Show Visibility Icon";
 		private const string MENU_GUTTER_0 = "Window/Hierarchy Quick Toggle/Right Gutter/0";
 		private const string MENU_GUTTER_1 = "Window/Hierarchy Quick Toggle/Right Gutter/1";
 		private const string MENU_GUTTER_2 = "Window/Hierarchy Quick Toggle/Right Gutter/2";
@@ -51,7 +54,7 @@ namespace SubjectNerd.QuickToggle
 								styleVisOn, styleVisOff,
 								styleDivider;
 
-	    private static bool showDivider, showIcons;
+	    private static bool showDivider, showIcons, showVisIcon;
 
 		#region Menu stuff
 	    [MenuItem(MENU_NAME, false, 1)]
@@ -66,6 +69,7 @@ namespace SubjectNerd.QuickToggle
 	    private static bool SetupMenuCheckMarks()
 		{
 			Menu.SetChecked(MENU_NAME, EditorPrefs.GetBool(PrefKeyShowToggle));
+			Menu.SetChecked(MENU_VIS_ICONS, EditorPrefs.GetBool(PrefKeyShowVisIcon));
 			Menu.SetChecked(MENU_DIVIDER, EditorPrefs.GetBool(PrefKeyShowDividers));
 			Menu.SetChecked(MENU_ICONS, EditorPrefs.GetBool(PrefKeyShowIcons));
 
@@ -75,13 +79,19 @@ namespace SubjectNerd.QuickToggle
 			return true;
 	    }
 
-		[MenuItem(MENU_DIVIDER, false, 20)]
+		[MenuItem(MENU_VIS_ICONS, false, 20)]
+		private static void ToggleVisIcons()
+        {
+			ToggleSettings(PrefKeyShowVisIcon, MENU_VIS_ICONS, out showVisIcon);
+        }
+
+		[MenuItem(MENU_DIVIDER, false, 21)]
 	    private static void ToggleDivider()
 		{
 			ToggleSettings(PrefKeyShowDividers, MENU_DIVIDER, out showDivider);
 		}
 
-		[MenuItem(MENU_ICONS, false, 21)]
+		[MenuItem(MENU_ICONS, false, 22)]
 	    private static void ToggleIcons()
 	    {
 			ToggleSettings(PrefKeyShowIcons, MENU_ICONS, out showIcons);
@@ -139,7 +149,8 @@ namespace SubjectNerd.QuickToggle
 	    static QuickToggle()
 	    {
 			// Setup initial state of editor prefs if there are no prefs keys yet
-			string[] resetPrefs = new string[] {PrefKeyShowToggle, PrefKeyShowDividers, PrefKeyShowIcons};
+			string[] resetPrefs = new string[] {PrefKeyShowToggle, PrefKeyShowDividers,
+												PrefKeyShowIcons, PrefKeyShowVisIcon};
 			foreach (string prefKey in resetPrefs)
 			{
 				if (EditorPrefs.HasKey(prefKey) == false)
@@ -168,6 +179,7 @@ namespace SubjectNerd.QuickToggle
 			EditorPrefs.SetBool(PrefKeyShowToggle, show);
 		    showDivider = EditorPrefs.GetBool(PrefKeyShowDividers, false);
 		    showIcons = EditorPrefs.GetBool(PrefKeyShowIcons, false);
+			showVisIcon = EditorPrefs.GetBool(PrefKeyShowVisIcon, false);
 		    gutterCount = EditorPrefs.GetInt(PrefKeyGutterLevel);
 
 		    if (show)
@@ -237,8 +249,17 @@ namespace SubjectNerd.QuickToggle
             if (target == null)
                 return;
 
-            // Reserve the draw rects
-		    float gutterX = selectionRect.height*gutterCount;
+			// Get states
+			bool isVisible = target.activeSelf;
+			bool isLocked = (target.hideFlags & HideFlags.NotEditable) > 0;
+
+			// Check if mouse is over hierarchy item, to act like Unity vis toggle
+			Event evt = Event.current;
+			if (isLocked == false && selectionRect.Contains(evt.mousePosition) == false)
+				return;
+
+			// Reserve the draw rects
+			float gutterX = selectionRect.height*gutterCount;
 		    if (gutterX > 0)
 			    gutterX += selectionRect.height*0.1f;
 		    float xMax = selectionRect.xMax - gutterX;
@@ -254,13 +275,12 @@ namespace SubjectNerd.QuickToggle
 				xMax = xMax - (selectionRect.height * 0.05f)
             };
 
-			// Get states
-			bool isVisible = target.activeSelf;
-			bool isLocked = (target.hideFlags & HideFlags.NotEditable) > 0;
-			
-			// Draw the visibility toggle
-		    GUIStyle visStyle = (isVisible) ? styleVisOn : styleVisOff;
-			GUI.Label(visRect, GUIContent.none, visStyle);
+			if (showVisIcon)
+			{
+				// Draw the visibility toggle
+				GUIStyle visStyle = (isVisible) ? styleVisOn : styleVisOff;
+				GUI.Label(visRect, GUIContent.none, visStyle);
+			}
 
 			// Draw lock toggle
 			GUIStyle lockStyle = (isLocked) ? styleLock : styleUnlocked;
@@ -373,9 +393,20 @@ namespace SubjectNerd.QuickToggle
             if (objectLockState == isLocked)
 		        return;
 
-	        Object[] objects = GatherObjects(target);
-			
-            foreach (Object obj in objects)
+			List<GameObject> setGameObjects = new List<GameObject>() { target };
+
+			// If target object is part of selection, logical thing is to set state of selection
+			List<GameObject> selectionList = new List<GameObject>(Selection.gameObjects);
+			if (selectionList.Contains(target))
+				setGameObjects = selectionList;
+
+			List<Object> gatheredObjects = new List<Object>();
+			foreach (GameObject setGameObject in setGameObjects)
+            {
+				gatheredObjects.AddRange(GatherObjects(setGameObject));
+            }
+
+            foreach (Object obj in gatheredObjects)
             {
                 GameObject go = (GameObject)obj;
 				string undoString = string.Format("{0} {1}", isLocked ? "Lock" : "Unlock", go.name);
@@ -396,7 +427,6 @@ namespace SubjectNerd.QuickToggle
                 {
                     if (comp is Transform)
                         continue;
-					Undo.RecordObject(comp, undoString);
                     if (isLocked)
                     {
                         comp.hideFlags |= HideFlags.NotEditable;
@@ -451,10 +481,10 @@ namespace SubjectNerd.QuickToggle
 #if UNITY_2018_3_OR_NEWER
             tempStyle = new GUIStyle()
             {
-                normal = new GUIStyleState() { background = EditorGUIUtility.Load("Icons/animationvisibilitytoggleoff.png") as Texture2D },
-                onNormal = new GUIStyleState() { background = EditorGUIUtility.Load("Icons/animationvisibilitytoggleon.png") as Texture2D },
-                fixedHeight = 11,
-                fixedWidth = 13,
+                normal = new GUIStyleState() { background = EditorGUIUtility.Load("Icons/d_VisibilityOff.png") as Texture2D },
+                onNormal = new GUIStyleState() { background = EditorGUIUtility.Load("Icons/d_VisibilityOn.png") as Texture2D },
+                fixedHeight = 16,
+                fixedWidth = 16,
                 border = new RectOffset(2, 2, 2, 2),
                 overflow = new RectOffset(-1, 1, -2, 2),
                 padding = new RectOffset(3, 3, 3, 3),
